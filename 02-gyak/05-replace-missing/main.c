@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Fill some idx with 0
 void arr_fill_seq(float* arr, int size, float start)
 {
     int i;
@@ -25,28 +24,25 @@ static void arr_print(const char* label, const float* arr, int size, int max_pri
 
 int main(int argc, char* argv[])
 {
-    int n = 1024;
-    if (argc == 2) n = atoi(argv[1]);
-    if (n <= 0) {
+    int size = 1024;
+    if (argc == 2) size = atoi(argv[1]);
+    if (size <= 0) {
         fprintf(stderr, "Usage: %s [n]\n", argv[0]);
         return 1;
     }
 
-    float* input = arr_create(n);
-    float* result = arr_create(n);
+    float* input = arr_create(size);
+    float* result = arr_create(size);
 
     if (!input || !result) { fprintf(stderr, "OOM\n"); return 1; }
 
-    int size = sizeof(input) / sizeof(input[0]);
-
     arr_fill_seq(input, size, 1.0f);
 
-    if (replace_missing(input, result) != 0) {
+    if (replace_missing(input, result, size) != 0) {
         fprintf(stderr, "Replace missing failed\n");
         return 1;
     }
 
-    
     arr_print("input", input, size, 8);
     arr_print("result", result, size, 8);
 

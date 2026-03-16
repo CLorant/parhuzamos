@@ -3,6 +3,6 @@
 
 float* arr_create(int size);
 
-int replace_missing(const float* input, float* result);
+int replace_missing(const float* input, float* result, int size);
 
 #endif

@@ -17,7 +17,6 @@ float* arr_create(int size) {
     arr = (float*)calloc((size_t)size, sizeof(float));
 
     if (!arr) {
-        free(arr);
         return NULL; 
     }
 
@@ -41,20 +40,19 @@ static int replace_missing_bind_args(cl_kernel kernel,
     return (err == CL_SUCCESS) ? 0 : -1;
 }
 
-int replace_missing(const float* input, float* result)
+int replace_missing(const float* input, float* result, int size)
 {
     CLContext ctx;
     int ret = -1;
-    int n = sizeof(input) / sizeof(input[0]); // Needs setting
 
     // Needs setting
     CLBufferDesc bufs[] = {
-        { input,  (size_t)n * sizeof(float), CL_MEM_READ_ONLY,  0 },
-        { result, (size_t)n * sizeof(float), CL_MEM_WRITE_ONLY, 1 },
+        { (void*)input,  (size_t)size * sizeof(float), CL_MEM_READ_ONLY,  0 },
+        { result, (size_t)size * sizeof(float), CL_MEM_WRITE_ONLY, 1 },
     };
 
     const size_t local_size  = 256;
-    const size_t global_size = ((size_t)n + local_size - 1)
+    const size_t global_size = ((size_t)size + local_size - 1)
                                / local_size * local_size;
 
     // Needs setting
@@ -74,7 +72,7 @@ int replace_missing(const float* input, float* result)
 
     // Needs setting
     if (cl_run_kernel(&ctx, &kd, bufs, 2,
-                      replace_missing_bind_args, &n) != 0) {
+                      replace_missing_bind_args, &size) != 0) {
         fprintf(stderr, "GPU kernel failed\n");
         goto done;
     }

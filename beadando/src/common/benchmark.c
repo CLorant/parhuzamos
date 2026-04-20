@@ -260,8 +260,8 @@ int run_benchmark(const BenchmarkConfig* cfg)
         /* Decode plots:  col_omp=5, col_ocl=6, col_S_omp=10, col_S_ocl=12 */
         typedef struct { const char* op; int col_omp; int col_S_omp; } PlotEntry;
         PlotEntry entries[] = {
-            { "Kódolás",   3, 7  },
-            { "Dekódolás", 5, 10 },
+            { "encoding",   3, 7  },
+            { "decoding", 5, 10 },
         };
 
         for (int e = 0; e < 2; e++) {

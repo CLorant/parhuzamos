@@ -1,62 +1,87 @@
-# Fordító és kapcsolók
-CC = gcc
-CFLAGS = -Iinclude/ -Wall -Wextra -O3 -fopenmp -g
-LDFLAGS = -fopenmp
-LIBS_WINDOWS = -lmingw32
-TARGET_WINDOWS = maze.exe
-TARGET_LINUX = maze
+# ============================================================
+#  Parallel LSB Steganography  –  Makefile (cross-platform)
+#  Targets:  all  clean  dirs  gen  bench
+# ============================================================
 
+CC       = gcc
+CFLAGS   = -O2 -Wall -Wextra -std=c11 \
+           -Iinclude/common \
+           -Iinclude/openmp \
+           -Iinclude/opencl
+OMPFLAG  = -fopenmp
+OCLFLAG  = -lOpenCL
+MATHFLAG = -lm
 
-# Forrásfájlok és objektumfájlok
-SRC_DIR = src
-OBJ_DIR = obj
-SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
-OBJ_FILES = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC_FILES))
+# ---- Source files -----------------------------------------------
+SRC_COMMON = src/common/image_io.c \
+             src/common/stego_utils.c \
+             src/common/benchmark.c
+SRC_OMP    = src/openmp/stego_openmp.c
+SRC_OCL    = src/opencl/kernel_loader.c \
+             src/opencl/run_cl.c \
+             src/opencl/stego_opencl.c
+SRC_MAIN   = main.c
+SRCS       = $(SRC_COMMON) $(SRC_OMP) $(SRC_OCL) $(SRC_MAIN)
 
-# Alapértelmezett cél: operációs rendszer detektálása
+# ---- Output -----------------------------------------------------
+TARGET_WINDOWS = stego.exe
+TARGET_LINUX   = stego
+
+# ============================================================
+#  Platform detection
+# ============================================================
 ifeq ($(OS), Windows_NT)
     TARGET = $(TARGET_WINDOWS)
-    LIBS = $(LIBS_WINDOWS)
-    MKDIR = if not exist $(OBJ_DIR) mkdir $(OBJ_DIR)
-    RM = del /f /q
-    RMDIR = rmdir /s /q
+    RM     = del /f /q
+    RMDIR  = rmdir /s /q
+    NULL   = 2>nul
 else
     TARGET = $(TARGET_LINUX)
-    LIBS =
-    MKDIR = mkdir -p $(OBJ_DIR)
-    RM = rm -f
-    RMDIR = rm -rf
+    RM     = rm -f
+    RMDIR  = rm -rf
+    NULL   = 2>/dev/null
 endif
 
-all: $(TARGET)
+# ============================================================
+.PHONY: all clean dirs gen bench
 
-# Windows cél
-windows: $(TARGET_WINDOWS)
+all: dirs $(TARGET)
 
-$(TARGET_WINDOWS): $(OBJ_FILES)
-	$(CC) $(CFLAGS) $(OBJ_FILES) -o $@ $(LDFLAGS) $(LIBS_WINDOWS)
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) $(OMPFLAG) $^ -o $@ $(OCLFLAG) $(MATHFLAG)
 
-# Linux cél
-linux: $(TARGET_LINUX)
+# Create required directories (explicit and cross‑platform)
+dirs:
+ifeq ($(OS), Windows_NT)
+	@if not exist data\results mkdir data\results
+	@if not exist data\plots mkdir data\plots
+	@if not exist data\outputs mkdir data\outputs
+	@if not exist data\samples mkdir data\samples
+else
+	@mkdir -p data/results data/plots data/outputs data/samples
+endif
 
-$(TARGET_LINUX): $(OBJ_FILES)
-	$(CC) $(CFLAGS) $(OBJ_FILES) -o $@ $(LDFLAGS)
+# Generate a 1024×1024 test carrier
+gen: all
+	./$(TARGET) gen 1024 1024 data/samples/test_1024.ppm
 
-# Objektumfájlok fordítása
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	@$(MKDIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+# Run the full benchmark with default sizes and thread counts
+bench: all
+	./$(TARGET) bench
 
-# Tisztítás
 clean:
 ifeq ($(OS), Windows_NT)
-	-$(RM) $(OBJ_DIR)\*.o
-	-$(RM) $(TARGET_WINDOWS)
-	-$(RMDIR) $(OBJ_DIR)
+	-$(RM) $(TARGET_WINDOWS) $(NULL)
+	-$(RM) data\results\*.csv $(NULL)
+	-$(RM) data\plots\*.png $(NULL)
+	-$(RM) data\outputs\*.ppm $(NULL)
+	-$(RM) data\samples\*.ppm $(NULL)
+	-$(RMDIR) data\results data\plots data\outputs data\samples $(NULL)
 else
-	$(RM) $(OBJ_DIR)/*.o
-	$(RM) $(TARGET_LINUX)
-	$(RMDIR) $(OBJ_DIR)
+	-$(RM) $(TARGET_LINUX)
+	-$(RM) data/results/*.csv
+	-$(RM) data/plots/*.png
+	-$(RM) data/outputs/*.ppm
+	-$(RM) data/samples/*.ppm
+	-$(RMDIR) data/results data/plots data/outputs data/samples $(NULL)
 endif
-
-.PHONY: all windows linux clean

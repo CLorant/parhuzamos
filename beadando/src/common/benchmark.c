@@ -28,9 +28,6 @@ double get_time(void) {
 }
 #endif
 
-/* -----------------------------------------------------------------------
- * Build a synthetic test message: `len` bytes of repeating ASCII pattern.
- * ----------------------------------------------------------------------- */
 static StegoMessage make_test_message(size_t len)
 {
     StegoMessage m;
@@ -41,16 +38,11 @@ static StegoMessage make_test_message(size_t len)
     return m;
 }
 
-/* -----------------------------------------------------------------------
- * Time a single encode or decode pass, returning elapsed seconds.
- * carrier is NOT modified (a fresh copy is made for encode each trial).
- * ----------------------------------------------------------------------- */
-
 typedef enum { OP_ENCODE, OP_DECODE } Op;
 
 static double time_omp(Op op, const Image* carrier,
                         const StegoMessage* msg,
-                        const Image* stego,   /* used by decode */
+                        const Image* stego,
                         int p)
 {
     double start, end;
@@ -96,9 +88,6 @@ static double time_ocl(Op op, CLContext* ctx,
     return end - start;
 }
 
-/* -----------------------------------------------------------------------
- * Average over `trials` runs.
- * ----------------------------------------------------------------------- */
 static double avg_time_omp(Op op, const Image* carrier,
                             const StegoMessage* msg, const Image* stego,
                             int p, int trials)
@@ -120,9 +109,6 @@ static double avg_time_ocl(Op op, CLContext* ctx,
     return sum / trials;
 }
 
-/* =====================================================================
- * run_benchmark
- * ===================================================================== */
 int run_benchmark(const BenchmarkConfig* cfg)
 {
     FILE* f = fopen(cfg->csv_path, "w");
@@ -131,33 +117,22 @@ int run_benchmark(const BenchmarkConfig* cfg)
         return -1;
     }
 
-    /* CSV header */
     fprintf(f,
         "n,p,"
         "omp_encode,ocl_encode,"
         "omp_decode,ocl_decode,"
         "S_omp_encode,E_omp_encode,S_ocl_encode,"
         "S_omp_decode,E_omp_decode,S_ocl_decode\n");
-    /* cols:
-       1   2
-       3           4
-       5           6
-       7             8              9
-       10            11             12
-    */
 
-    /* Initialise one shared OpenCL context for the entire benchmark */
     CLContext cl_ctx;
     if (cl_init(&cl_ctx) != 0) {
         fprintf(stderr, "[bench] OpenCL init failed – OCL columns will be -1\n");
-        /* continue with OCL disabled rather than aborting */
     }
 
     for (int ni = 0; ni < cfg->n_count; ni++) {
-        int side = cfg->n_widths[ni];           /* square image: side × side */
-        long n   = (long)side * side;           /* pixel count (printed as n) */
+        int side = cfg->n_widths[ni];
+        long n   = (long)side * side;
 
-        /* ---- Generate carrier image ---- */
         char carrier_path[256];
         snprintf(carrier_path, sizeof(carrier_path),
                  "data/samples/bench_%dx%d.ppm", side, side);
@@ -169,18 +144,15 @@ int run_benchmark(const BenchmarkConfig* cfg)
             continue;
         }
 
-        /* ---- Build test message (75 % of capacity, max 4 MB) ---- */
         size_t cap = stego_capacity_bytes(&carrier);
         size_t msg_len = cap * 3 / 4;
         if (msg_len > 4u * 1024 * 1024) msg_len = 4u * 1024 * 1024;
         StegoMessage msg = make_test_message(msg_len);
 
-        /* ---- Build the stego image (OCL encode; single authoritative copy) ---- */
         Image stego;
         image_copy(&stego, &carrier);
-        stego_encode_omp(&stego, &msg, 1);   /* use p=1 OMP for the reference */
+        stego_encode_omp(&stego, &msg, 1);
 
-        /* ---- Warmup OCL (JIT compilation is cached after first run) ---- */
         {
             Image tmp; image_copy(&tmp, &carrier);
             stego_encode_ocl(&cl_ctx, &tmp, &msg);
@@ -190,7 +162,6 @@ int run_benchmark(const BenchmarkConfig* cfg)
             stego_message_free(&out);
         }
 
-        /* ---- Measure OCL (does not depend on p, measured once per n) ---- */
         double t_ocl_enc = avg_time_ocl(OP_ENCODE, &cl_ctx,
                                          &carrier, &msg, &stego,
                                          cfg->trials);
@@ -198,7 +169,6 @@ int run_benchmark(const BenchmarkConfig* cfg)
                                          &carrier, &msg, &stego,
                                          cfg->trials);
 
-        /* ---- Baseline: OMP at p=1 (used for all speedup/efficiency) ---- */
         double t_omp_enc_p1 = avg_time_omp(OP_ENCODE, &carrier, &msg,
                                             &stego, 1, cfg->trials);
         double t_omp_dec_p1 = avg_time_omp(OP_DECODE, &carrier, &msg,
@@ -207,7 +177,6 @@ int run_benchmark(const BenchmarkConfig* cfg)
         double S_ocl_enc = (t_ocl_enc > 0.0) ? t_omp_enc_p1 / t_ocl_enc : 0.0;
         double S_ocl_dec = (t_ocl_dec > 0.0) ? t_omp_dec_p1 / t_ocl_dec : 0.0;
 
-        /* ---- Sweep p values ---- */
         for (int pi = 0; pi < cfg->p_count; pi++) {
             int p = cfg->p_values[pi];
 
@@ -254,10 +223,7 @@ int run_benchmark(const BenchmarkConfig* cfg)
 
     cl_cleanup(&cl_ctx);
 
-    /* ---- Invoke gnuplot ---- */
     if (cfg->plot_enabled) {
-        /* Encode plots:  col_omp=3, col_ocl=4, col_S_omp=7, col_S_ocl=9 */
-        /* Decode plots:  col_omp=5, col_ocl=6, col_S_omp=10, col_S_ocl=12 */
         typedef struct { const char* op; int col_omp; int col_S_omp; } PlotEntry;
         PlotEntry entries[] = {
             { "encoding",   3, 7  },
@@ -289,9 +255,6 @@ int run_benchmark(const BenchmarkConfig* cfg)
     return 0;
 }
 
-/* =====================================================================
- * benchmark_handle_args
- * ===================================================================== */
 int benchmark_handle_args(int argc, char* argv[], BenchmarkConfig* cfg)
 {
     typedef enum { NONE, N_MODE, P_MODE } Mode;
@@ -330,7 +293,6 @@ int benchmark_handle_args(int argc, char* argv[], BenchmarkConfig* cfg)
         }
     }
 
-    /* Defaults when the user omits n or p */
     if (cfg->n_count == 0) {
         int def[] = { 256, 512, 1024, 2048, 4096 };
         cfg->n_count = (int)(sizeof(def) / sizeof(def[0]));

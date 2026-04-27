@@ -6,18 +6,9 @@
 #include <string.h>
 #include <stdint.h>
 
-/* -----------------------------------------------------------------------
- * Kernel source path (relative to the working directory, which is the
- * project root when the binary is run from there).
- * ----------------------------------------------------------------------- */
 #define KERNEL_PATH  "kernels/steganography.cl"
 #define LOCAL_SIZE   256u
 
-/* -----------------------------------------------------------------------
- * Bind-arg callbacks
- * ----------------------------------------------------------------------- */
-
-/* Encode: kernel(pixels RW, payload R, total_bits) */
 typedef struct { int total_bits; } EncodeArgs;
 
 static int encode_bind(cl_kernel kernel, cl_mem* bufs,
@@ -26,13 +17,12 @@ static int encode_bind(cl_kernel kernel, cl_mem* bufs,
     (void)n_bufs;
     EncodeArgs* a = (EncodeArgs*)user_data;
     cl_int err = CL_SUCCESS;
-    err |= clSetKernelArg(kernel, 0, sizeof(cl_mem), &bufs[0]); /* pixels  */
-    err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &bufs[1]); /* payload */
+    err |= clSetKernelArg(kernel, 0, sizeof(cl_mem), &bufs[0]);
+    err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &bufs[1]);
     err |= clSetKernelArg(kernel, 2, sizeof(int),    &a->total_bits);
     return (err == CL_SUCCESS) ? 0 : -1;
 }
 
-/* Decode: kernel(pixels R, output W, bit_offset, num_bytes) */
 typedef struct { int bit_offset; int num_bytes; } DecodeArgs;
 
 static int decode_bind(cl_kernel kernel, cl_mem* bufs,
@@ -41,28 +31,18 @@ static int decode_bind(cl_kernel kernel, cl_mem* bufs,
     (void)n_bufs;
     DecodeArgs* a = (DecodeArgs*)user_data;
     cl_int err = CL_SUCCESS;
-    err |= clSetKernelArg(kernel, 0, sizeof(cl_mem), &bufs[0]); /* pixels */
-    err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &bufs[1]); /* output */
+    err |= clSetKernelArg(kernel, 0, sizeof(cl_mem), &bufs[0]);
+    err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &bufs[1]);
     err |= clSetKernelArg(kernel, 2, sizeof(int),    &a->bit_offset);
     err |= clSetKernelArg(kernel, 3, sizeof(int),    &a->num_bytes);
     return (err == CL_SUCCESS) ? 0 : -1;
 }
 
-/* -----------------------------------------------------------------------
- * Convenience: round n up to the next multiple of LOCAL_SIZE.
- * ----------------------------------------------------------------------- */
 static size_t round_up(size_t n)
 {
     return ((n + LOCAL_SIZE - 1) / LOCAL_SIZE) * LOCAL_SIZE;
 }
 
-/* =====================================================================
- * stego_encode_ocl
- *
- * One call to cl_run_kernel with the encode_kernel.
- * The pixels buffer is READ_WRITE (uploaded + read back after the kernel).
- * The payload buffer is READ_ONLY (uploaded only).
- * ===================================================================== */
 int stego_encode_ocl(CLContext* ctx, Image* img, const StegoMessage* msg)
 {
     if (stego_check_capacity(img, msg) != 0)
@@ -78,9 +58,7 @@ int stego_encode_ocl(CLContext* ctx, Image* img, const StegoMessage* msg)
     size_t img_size = (size_t)img->width * img->height * img->channels;
 
     CLBufferDesc bufs[] = {
-        /* pixels: uploaded to device, modified, then read back */
         { img->pixels, img_size,       CL_MEM_READ_WRITE, 1 },
-        /* payload: uploaded, not read back */
         { payload,     framed_len,     CL_MEM_READ_ONLY,  0 },
     };
 
@@ -99,17 +77,6 @@ int stego_encode_ocl(CLContext* ctx, Image* img, const StegoMessage* msg)
     return ret;
 }
 
-/* =====================================================================
- * stego_decode_ocl
- *
- * Two kernel launches with the same decode_kernel source:
- *
- *   Launch 1:  bit_offset=0,  num_bytes=4   → recover the length prefix
- *   Launch 2:  bit_offset=32, num_bytes=len → recover the message payload
- *
- * Recompiling the same source twice is an accepted cost here; production
- * code would cache the cl_program object across calls.
- * ===================================================================== */
 int stego_decode_ocl(CLContext* ctx, const Image* img, StegoMessage* msg)
 {
     size_t img_size = (size_t)img->width * img->height * img->channels;
@@ -118,7 +85,6 @@ int stego_decode_ocl(CLContext* ctx, const Image* img, StegoMessage* msg)
         return -1;
     }
 
-    /* ---- Launch 1: decode the 4-byte length field ---- */
     uint8_t len_bytes[4] = {0};
     {
         size_t gs = round_up(4);
@@ -151,7 +117,6 @@ int stego_decode_ocl(CLContext* ctx, const Image* img, StegoMessage* msg)
         return -1;
     }
 
-    /* ---- Launch 2: decode the actual message bytes ---- */
     msg->length = (size_t)len32;
     msg->data   = (uint8_t*)malloc(len32);
     if (!msg->data) return -1;

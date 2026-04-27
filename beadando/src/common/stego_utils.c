@@ -4,14 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* =====================================================================
- * stego_frame
- *
- * Builds the raw bit-stream payload:
- *   [byte0..3 = LE uint32 message length] [message bytes]
- *
- * The result is what gets embedded, 1 bit per carrier channel byte.
- * ===================================================================== */
 uint8_t* stego_frame(const StegoMessage* msg, size_t* framed_len)
 {
     *framed_len = 4 + msg->length;
@@ -28,13 +20,8 @@ uint8_t* stego_frame(const StegoMessage* msg, size_t* framed_len)
     return buf;
 }
 
-/* =====================================================================
- * stego_check_capacity
- * ===================================================================== */
 int stego_check_capacity(const Image* img, const StegoMessage* msg)
 {
-    /* Each carrier channel byte holds one payload bit.
-       We need (4 + msg->length) payload bytes → × 8 carrier bytes. */
     size_t bits_needed   = (4 + msg->length) * 8;
     size_t carrier_bytes = (size_t)img->width * img->height * img->channels;
 

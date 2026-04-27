@@ -40,7 +40,7 @@ p_values = unique_p
 set terminal pngcairo enhanced font "Arial,12" size 1280,720
 set output output_file
 set grid lt 1 lc rgb "#dddddd"
-set key top right noenhanced font ",11"
+set key bottom right noenhanced font ",11"
 set tmargin 5
 set bmargin 5
 set style data linespoints

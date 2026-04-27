@@ -7,16 +7,6 @@
 #include <string.h>
 #include <stdint.h>
 
-/* =====================================================================
- * stego_encode_omp
- *
- * Embedding scheme:
- *   payload = stego_frame(msg)          (4-byte length prefix + data)
- *   pixel_byte[i] &= ~1                 clear LSB
- *   pixel_byte[i] |= (payload[i/8] >> (i%8)) & 1   set LSB to payload bit i
- *
- * Work is distributed across pixel bytes (each byte is independent).
- * ===================================================================== */
 int stego_encode_omp(Image* img, const StegoMessage* msg, int num_threads)
 {
     if (stego_check_capacity(img, msg) != 0)
@@ -26,15 +16,11 @@ int stego_encode_omp(Image* img, const StegoMessage* msg, int num_threads)
     uint8_t* payload = stego_frame(msg, &framed_len);
     if (!payload) return -1;
 
-    size_t total_bits = framed_len * 8;   /* = number of carrier bytes used */
+    size_t total_bits = framed_len * 8;
 
     if (num_threads > 0)
         omp_set_num_threads(num_threads);
 
-    /*
-     * Each iteration i writes to a unique pixel byte img->pixels[i],
-     * so there are no data races.
-     */
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < total_bits; i++) {
         uint8_t bit = (payload[i >> 3] >> (i & 7)) & 1;
@@ -45,19 +31,10 @@ int stego_encode_omp(Image* img, const StegoMessage* msg, int num_threads)
     return 0;
 }
 
-/* =====================================================================
- * stego_decode_omp
- *
- * Pass 1 (serial): read 32 carrier bytes → recover 4-byte length prefix.
- * Pass 2 (parallel): each thread reconstructs a distinct output byte
- *   by collecting 8 consecutive LSBs. No data races because each
- *   iteration writes to a unique msg->data[byte_i].
- * ===================================================================== */
 int stego_decode_omp(const Image* img, StegoMessage* msg, int num_threads)
 {
     size_t total_carrier = (size_t)img->width * img->height * img->channels;
 
-    /* ---- Pass 1: decode the 4-byte length prefix (32 carrier bytes) ---- */
     if (total_carrier < 32) {
         fprintf(stderr, "[stego/omp] Carrier image too small to hold a header\n");
         return -1;
@@ -82,7 +59,6 @@ int stego_decode_omp(const Image* img, StegoMessage* msg, int num_threads)
         return -1;
     }
 
-    /* ---- Pass 2: decode message bytes in parallel ---- */
     msg->length = (size_t)len32;
     msg->data   = (uint8_t*)malloc(len32);
     if (!msg->data) return -1;
@@ -90,15 +66,10 @@ int stego_decode_omp(const Image* img, StegoMessage* msg, int num_threads)
     if (num_threads > 0)
         omp_set_num_threads(num_threads);
 
-    /*
-     * Each iteration writes to a unique msg->data[byte_i].
-     * The inner loop over 8 bits is not parallelised; it stays serial
-     * inside each thread's work unit.
-     */
     #pragma omp parallel for schedule(static)
     for (size_t byte_i = 0; byte_i < (size_t)len32; byte_i++) {
         uint8_t val = 0;
-        size_t  base = 32 + byte_i * 8;   /* skip the 32-bit length header */
+        size_t  base = 32 + byte_i * 8;
         for (int b = 0; b < 8; b++) {
             val |= (img->pixels[base + b] & 1) << b;
         }

@@ -7,10 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* -----------------------------------------------------------------------
- * Internal: skip PPM comment lines (lines starting with '#').
- * The file position is left just after the last skipped comment.
- * ----------------------------------------------------------------------- */
 static void skip_ppm_comments(FILE* f)
 {
     int c;
@@ -22,9 +18,6 @@ static void skip_ppm_comments(FILE* f)
         ungetc(c, f);
 }
 
-/* =====================================================================
- * image_load_ppm
- * ===================================================================== */
 int image_load_ppm(const char* path, Image* img)
 {
     FILE* f = fopen(path, "rb");
@@ -48,7 +41,6 @@ int image_load_ppm(const char* path, Image* img)
     skip_ppm_comments(f);
     if (fscanf(f, "%d", &maxval) != 1) goto bad_header;
 
-    /* Consume exactly one whitespace character before the binary data */
     fgetc(f);
 
     if (w <= 0 || h <= 0 || maxval != 255) {
@@ -84,11 +76,13 @@ bad_header:
     return -1;
 }
 
-/* =====================================================================
- * image_save_ppm
- * ===================================================================== */
 int image_save_ppm(const char* path, const Image* img)
 {
+    if (create_output_directories(path) != 0) {
+        fprintf(stderr, "[image_io] Cannot create directory for '%s'\n", path);
+        return -1;
+    }
+
     FILE* f = fopen(path, "wb");
     if (!f) {
         fprintf(stderr, "[image_io] Cannot open '%s' for writing\n", path);
@@ -134,6 +128,11 @@ int image_load_png(const char* path, Image* img)
 
 int image_save_png(const char* path, const Image* img)
 {
+    if (create_output_directories(path) != 0) {
+        fprintf(stderr, "[image_io] Cannot create directory for '%s'\n", path);
+        return -1;
+    }
+    
     int stride = img->width * 3;
     int ret = stbi_write_png(path, img->width, img->height, 3,
                              img->pixels, stride);
@@ -184,9 +183,6 @@ int image_save(const char* path, const Image* img)
     }
 }
 
-/* =====================================================================
- * image_alloc
- * ===================================================================== */
 int image_alloc(Image* img, int width, int height, int channels)
 {
     img->width    = width;
@@ -200,18 +196,12 @@ int image_alloc(Image* img, int width, int height, int channels)
     return 0;
 }
 
-/* =====================================================================
- * image_free
- * ===================================================================== */
 void image_free(Image* img)
 {
     free(img->pixels);
     img->pixels = NULL;
 }
 
-/* =====================================================================
- * image_copy
- * ===================================================================== */
 int image_copy(Image* dst, const Image* src)
 {
     dst->width    = src->width;
@@ -227,10 +217,6 @@ int image_copy(Image* dst, const Image* src)
     return 0;
 }
 
-/* =====================================================================
- * image_generate_synthetic
- * Uses a simple LCG so output is deterministic for a given seed.
- * ===================================================================== */
 int image_generate_synthetic(const char* path, int width, int height,
                               unsigned int seed)
 {

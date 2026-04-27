@@ -18,28 +18,21 @@ int create_output_directories(const char* file_path)
     if (!tmp) return -1;
     strcpy(tmp, file_path);
 
-    // Normalize backslashes to forward slashes for consistent handling
     for (char* p = tmp; *p; ++p)
         if (*p == '\\') *p = '/';
 
-    // Extract the directory part (strip the filename)
     char* last_sep = strrchr(tmp, '/');
     if (!last_sep) {
         free(tmp);
-        return 0;   // no directory part – nothing to create
+        return 0;
     }
     *last_sep = '\0';
 
-    // Walk the path and attempt to create each subdirectory
     char* p = tmp;
-    if (*p == '/') p++;   // skip leading slash on POSIX paths
+    if (*p == '/') p++;
     do {
         char* next = strchr(p, '/');
         if (next) *next = '\0';
-
-        // Create directory – ignore the return value.
-        // If it already exists, that's fine. If it truly fails,
-        // the subsequent file open will report the error.
         (void)MKDIR(tmp);
 
         if (next) *next = '/';

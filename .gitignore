@@ -1,2 +1,4 @@
 *.exe
-data/samples/outputs/*
+beadando/data/samples/outputs/*
+beadando/data/samples/*.ppm
+beadando/data/demo

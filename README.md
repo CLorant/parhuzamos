@@ -30,43 +30,38 @@ A kódolás és dekódolás tökéletesen adatpárhuzamos:
 | CPU | OpenMP `parallel for` | szálak (p = 1…N) |
 | GPU | OpenCL NDRange kernel | work-item-ek (globális méret = payload bitek száma) |
 
-**Hordozó képformátum:** bináris PPM (P6), 3 csatorna (RGB), külső könyvtár nélkül.
-
-**Payload keretezés:**
-```
-[4 bájt LE uint32 = üzenet hossza] [üzenet bájtok]
-```
-A keretezett payload-ot rejtjük el, ezért az üzenet mérete automatikusan
-visszaolvasható a képből.
-
-**Kapacitás:** `floor(szélesség × magasság × 3 / 8)` bájt.
+**Hordozó képformátum:** bináris PPM vagy PNG.
 
 ---
 
 ## Könyvtárstruktúra
 
 ```
-project/
+beadando/
 ├── data/
+│   ├── demo/             # Demo futtatásakor létrejövő mappa
+│   ├── docs/             # Statikus mérési eredmények dokumentációhoz
 │   ├── results/          # CSV mérési eredmények
 │   ├── plots/            # Gnuplot által generált PNG ábrák
-│   ├── outputs/          # Kódolt kimeneti képek
-│   ├── samples/          # Benchmark hordozó képek (generáltak)
+│   ├── samples/          # Program által kezelt források
+│      ├── inputs/        # input.png  input.ppm  input.txt
+│      ├── outputs/       # Opcionális kimeneti mappa
 │   ├── plot_n.plt        # Gnuplot: futási idő / gyorsítás vs problémaméret
-│   └── plot_p.plt        # Gnuplot: futási idő / gyorsítás / hatékonyság vs p
+│   └── plot_p.plt        # Gnuplot: futási idő / gyorsítás / hatékonyság vs problémaméret
 ├── kernels/
 │   └── steganography.cl  # OpenCL kernelek (encode_kernel, decode_kernel)
 ├── include/
-│   ├── common/           # stego_types.h  image_io.h  stego_utils.h  benchmark.h
+│   ├── common/           # benchmark.h filesystem_utils.h  image_io.h  stego_types.h  stego_utils.h
 │   ├── openmp/           # stego_openmp.h
 │   └── opencl/           # stego_opencl.h  run_cl.h  kernel_loader.h
+│   └── stb/              # stb lib headerjei PNG kezeléshez
 ├── src/
-│   ├── common/           # image_io.c  stego_utils.c  benchmark.c
+│   ├── common/           # benchmark.c  filesystem_utils.c  image_io.c  stb_impl.c  stego_utils.c  
 │   ├── openmp/           # stego_openmp.c
 │   └── opencl/           # stego_opencl.c  run_cl.c  kernel_loader.c
+├── demo.bat              # Program demo parancsok (windows)
 ├── main.c
-├── Makefile
-└── README.md
+└── Makefile
 ```
 
 ---
@@ -125,6 +120,8 @@ make clean    # bináris és adatfájlok törlése
 
 ## Mérések
 
+A benchmark futtatásakor az alábbi fájlok automatikusan létrejönnek vagy módosulnak. Az eredeti fájlok megtalálhatók a `data/docs` mappában.
+
 ### CSV formátum (`data/results/performance.csv`)
 
 | Oszlop | Tartalom |
@@ -155,16 +152,14 @@ Minden ábra az OpenMP görbéket szálszám szerint, az OpenCL eredményt pedig
 egyetlen referenciavonalként mutatja (a GPU szálszámát nem a felhasználó
 szabályozza).
 
----
+#### Kódolás problémaméret hatása
+![Kódolás problémaméret hatása](beadando/data/docs/encoding_n.png)
 
-## Megjegyzések az implementációhoz
+#### Dekódolás problémaméret hatása
+![Dekódolás problémaméret hatása](beadando/data/docs/decoding_n.png)
 
-- Az OpenCL kernelfájl futásidőben töltődik be a `kernels/` könyvtárból,
-  ezért a binárist a projekt gyökéréből kell indítani.
-- Az OCL dekódolás két kernel-hívást igényel: az első csak a 4 bájtos
-  hosszmezőt fejti vissza (szeriálisan olvasva a fejlécet), a második
-  párhuzamosan állítja elő az üzenet bájtjait.
-- A benchmark OCL JIT fordítási ideje a melegedési futtatással kizárható
-  a mérési eredményből. A `benchmark.c` tartalmaz warmup hívást minden n-re.
-- Az alapértelmezett képméretek (256²…4096²) a carrier-t a projekt indításakor
-  automatikusan generálják, ha még nem léteznek.
+#### Kódolás számítási egységek számának hatása
+![Kódolás számítási egységek számának hatása](beadando/data/docs/encoding_p.png)
+
+#### Dekódolás számítási egységek számának hatása
+![Dekódolás számítási egységek számának hatása](beadando/data/docs/decoding_p.png)

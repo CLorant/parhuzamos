@@ -1,6 +1,7 @@
 #include "common/image_io.h"
 #include "common/stego_types.h"
 #include "common/benchmark.h"
+#include "common/filesystem_utils.h"
 #include "opencl/run_cl.h"
 #include "opencl/stego_opencl.h"
 #include "openmp/stego_openmp.h"
@@ -9,9 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* -----------------------------------------------------------------------
- * Print usage and exit.
- * ----------------------------------------------------------------------- */
 static void usage(const char *prog)
 {
     fprintf(stderr,
@@ -28,10 +26,6 @@ static void usage(const char *prog)
     exit(EXIT_FAILURE);
 }
 
-/* -----------------------------------------------------------------------
- * Read an entire file into a StegoMessage.
- * msg->data is malloc'd; caller must free.
- * ----------------------------------------------------------------------- */
 static int read_message_file(const char *path, StegoMessage *msg)
 {
     FILE *f = fopen(path, "rb");
@@ -71,11 +65,13 @@ static int read_message_file(const char *path, StegoMessage *msg)
     return 0;
 }
 
-/* -----------------------------------------------------------------------
- * Write msg bytes to a file.
- * ----------------------------------------------------------------------- */
 static int write_message_file(const char *path, const StegoMessage *msg)
 {
+    if (create_output_directories(path) != 0) {
+        fprintf(stderr, "Cannot create directory for '%s'\n", path);
+        return -1;
+    }
+    
     FILE *f = fopen(path, "wb");
     if (!f)
     {
@@ -92,9 +88,6 @@ static int write_message_file(const char *path, const StegoMessage *msg)
     return 0;
 }
 
-/* -----------------------------------------------------------------------
- * Parse optional backend/thread flags from argv[start..argc-1].
- * ----------------------------------------------------------------------- */
 static void parse_backend_flags(int argc, char *argv[], int start,
                                 int *use_ocl, int *threads)
 {
@@ -111,9 +104,6 @@ static void parse_backend_flags(int argc, char *argv[], int start,
     }
 }
 
-/* =====================================================================
- * main
- * ===================================================================== */
 int main(int argc, char *argv[])
 {
     if (argc < 2)

@@ -1,7 +1,6 @@
---- Példa Titkos Üzenetek ---
+--- Példa Titkos Üzenet ---
 
-Az alábbi példákkal szemléltetem a program kódolási/dekódolási funkcionalitását.
-Az output.txt-ben ugyanez az üzenet jelenik meg.
+Az alábbi példával szemléltetem a program kódolási/dekódolási funkcionalitását.
 
 
 --- Email ---
@@ -16,11 +15,3 @@ A jelszó: "Árvíztűrő tükörfúrógép".
 
 Üdv,
 István
-
-
---- Vers ---
-
-Ej, mi a kő! tyúkanyó, kend
-A szobában lakik itt bent?
-Lám, csak jó az isten, jót ád,
-Hogy fölvitte a kend dolgát!

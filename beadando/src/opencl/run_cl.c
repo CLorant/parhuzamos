@@ -4,9 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* -----------------------------------------------------------------------
- * Internal macro: jump to a label on OpenCL error, printing a message.
- * ----------------------------------------------------------------------- */
 #define CL_CHECK(err, label, msg)                                        \
     do {                                                                  \
         if ((err) != CL_SUCCESS) {                                        \
@@ -15,9 +12,6 @@
         }                                                                 \
     } while (0)
 
-/* -----------------------------------------------------------------------
- * Internal helper: print the build log for a failed clBuildProgram call.
- * ----------------------------------------------------------------------- */
 static void print_build_log(cl_program program, cl_device_id device)
 {
     size_t log_size;
@@ -35,11 +29,6 @@ static void print_build_log(cl_program program, cl_device_id device)
     free(log);
 }
 
-/* -----------------------------------------------------------------------
- * Internal helper: decide whether to upload host data for this buffer.
- * We upload when the buffer is readable by the kernel (READ_ONLY or
- * READ_WRITE) and the caller provided host data.
- * ----------------------------------------------------------------------- */
 static int buffer_needs_upload(const CLBufferDesc* desc)
 {
     if (!desc->host_ptr) return 0;
@@ -47,9 +36,6 @@ static int buffer_needs_upload(const CLBufferDesc* desc)
            (desc->flags & CL_MEM_READ_WRITE);
 }
 
-/* =====================================================================
- * cl_init
- * ===================================================================== */
 int cl_init(CLContext* ctx)
 {
     cl_int  err;
@@ -76,9 +62,6 @@ fail_ctx: clReleaseContext(ctx->context);
 fail:     return -1;
 }
 
-/* =====================================================================
- * cl_cleanup
- * ===================================================================== */
 void cl_cleanup(CLContext* ctx)
 {
     clReleaseCommandQueue(ctx->command_queue);
@@ -86,9 +69,6 @@ void cl_cleanup(CLContext* ctx)
     clReleaseDevice(ctx->device_id);
 }
 
-/* =====================================================================
- * cl_run_kernel  --  generic engine; nothing in here is task-specific
- * ===================================================================== */
 int cl_run_kernel(CLContext*          ctx,
                   const CLKernelDesc* kd,
                   CLBufferDesc*       bufs,
@@ -104,14 +84,12 @@ int cl_run_kernel(CLContext*          ctx,
     cl_kernel  kernel        = NULL;
     cl_mem*    device_bufs   = NULL;
 
-    /* ---- 1. Allocate the cl_mem handle array ---- */
     device_bufs = (cl_mem*)calloc((size_t)n_bufs, sizeof(cl_mem));
     if (!device_bufs) {
         fprintf(stderr, "[OpenCL] Out of memory for buffer handle array\n");
         goto cleanup;
     }
 
-    /* ---- 2. Load and compile the kernel source ---- */
     source = load_kernel_source(kd->source_path, &loader_err);
     if (loader_err != 0) {
         fprintf(stderr, "[OpenCL] Could not load kernel source: %s\n",
@@ -132,12 +110,8 @@ int cl_run_kernel(CLContext*          ctx,
     kernel = clCreateKernel(program, kd->kernel_name, &err);
     CL_CHECK(err, cleanup, "clCreateKernel failed");
 
-    /* ---- 3. Allocate device buffers and upload readable host data ---- */
     for (i = 0; i < n_bufs; ++i) {
         cl_mem_flags alloc_flags = bufs[i].flags;
-
-        /* Add COPY_HOST_PTR automatically for readable buffers that have
-           host data — avoids an explicit clEnqueueWriteBuffer. */
         if (buffer_needs_upload(&bufs[i]))
             alloc_flags |= CL_MEM_COPY_HOST_PTR;
 
@@ -154,26 +128,22 @@ int cl_run_kernel(CLContext*          ctx,
         }
     }
 
-    /* ---- 4. Bind kernel arguments (task-specific, done by callback) ---- */
     if (bind_args(kernel, device_bufs, n_bufs, user_data) != 0) {
         fprintf(stderr, "[OpenCL] Argument binding callback returned error\n");
         goto cleanup;
     }
 
-    /* ---- 5. Enqueue the kernel ---- */
     err = clEnqueueNDRangeKernel(ctx->command_queue, kernel,
                                  kd->work_dim,
-                                 NULL,                /* global offset */
+                                 NULL, 
                                  kd->global_size,
-                                 kd->local_size,      /* may be NULL */
+                                 kd->local_size, 
                                  0, NULL, NULL);
     CL_CHECK(err, cleanup, "clEnqueueNDRangeKernel failed");
 
-    /* ---- 6. Read back output buffers (blocking on the last one) ---- */
     for (i = 0; i < n_bufs; ++i) {
         if (!bufs[i].read_back || !bufs[i].host_ptr) continue;
 
-        /* Block only on the very last read-back to maximise overlap. */
         cl_bool blocking = (i == n_bufs - 1) ? CL_TRUE : CL_FALSE;
 
         err = clEnqueueReadBuffer(ctx->command_queue,
@@ -190,14 +160,11 @@ int cl_run_kernel(CLContext*          ctx,
         }
     }
 
-    /* If no buffer had read_back == 1, the queue may still be running;
-       finish it so the caller can safely use device results via mapping etc. */
     clFinish(ctx->command_queue);
 
-    ret = 0; /* success */
+    ret = 0;
 
 cleanup:
-    /* Release device buffers in reverse order */
     for (i = n_bufs - 1; i >= 0; --i)
         if (device_bufs && device_bufs[i])
             clReleaseMemObject(device_bufs[i]);

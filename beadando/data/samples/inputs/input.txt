@@ -1,0 +1,26 @@
+--- Példa Titkos Üzenetek ---
+
+Az alábbi példákkal szemléltetem a program kódolási/dekódolási funkcionalitását.
+Az output.txt-ben ugyanez az üzenet jelenik meg.
+
+
+--- Email ---
+
+Dátum: 2026-04-26
+Feladó: István
+
+Kedves Pál!
+
+A találkozó időpontja: holnap 14:00, a régi helyen.
+A jelszó: "Árvíztűrő tükörfúrógép".
+
+Üdv,
+István
+
+
+--- Vers ---
+
+Ej, mi a kő! tyúkanyó, kend
+A szobában lakik itt bent?
+Lám, csak jó az isten, jót ád,
+Hogy fölvitte a kend dolgát!

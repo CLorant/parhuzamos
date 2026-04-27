@@ -1,7 +1,7 @@
 #ifndef STEGO_OPENCL_H
 #define STEGO_OPENCL_H
 
-#include "stego_types.h"
+#include "common/stego_types.h"
 #include "run_cl.h"
 
 /*

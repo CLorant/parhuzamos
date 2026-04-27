@@ -1,7 +1,7 @@
 #ifndef STEGO_UTILS_H
 #define STEGO_UTILS_H
 
-#include "stego_types.h"
+#include "common/stego_types.h"
 #include <stdint.h>
 #include <stddef.h>
 

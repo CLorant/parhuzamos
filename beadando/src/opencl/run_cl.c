@@ -1,5 +1,5 @@
-#include "run_cl.h"
-#include "kernel_loader.h"
+#include "opencl/run_cl.h"
+#include "opencl/kernel_loader.h"
 
 #include <stdio.h>
 #include <stdlib.h>

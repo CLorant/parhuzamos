@@ -1,4 +1,7 @@
-#include "image_io.h"
+#include "common/image_io.h"
+#include "common/filesystem_utils.h"
+#include "stb/stb_image.h"
+#include "stb/stb_image_write.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -105,6 +108,82 @@ int image_save_ppm(const char* path, const Image* img)
     return 0;
 }
 
+int image_load_png(const char* path, Image* img)
+{
+    int w, h, n;
+    unsigned char* stbi_data = stbi_load(path, &w, &h, &n, 3);
+    if (!stbi_data) {
+        fprintf(stderr, "[image_io] stbi_load failed for '%s': %s\n",
+                path, stbi_failure_reason());
+        return -1;
+    }
+
+    img->width  = w;
+    img->height = h;
+    img->channels = 3;
+    size_t size = (size_t)w * h * 3;
+    img->pixels = (uint8_t*)malloc(size);
+    if (!img->pixels) {
+        stbi_image_free(stbi_data);
+        return -1;
+    }
+    memcpy(img->pixels, stbi_data, size);
+    stbi_image_free(stbi_data);
+    return 0;
+}
+
+int image_save_png(const char* path, const Image* img)
+{
+    int stride = img->width * 3;
+    int ret = stbi_write_png(path, img->width, img->height, 3,
+                             img->pixels, stride);
+    if (ret == 0) {
+        fprintf(stderr, "[image_io] stbi_write_png failed for '%s'\n", path);
+        return -1;
+    }
+    return 0;
+}
+
+int image_load(const char* path, Image* img)
+{
+    const char* ext = strrchr(path, '.');
+    if (!ext) {
+        fprintf(stderr, "[image_io] Unknown file format: %s\n", path);
+        return -1;
+    }
+    if (strcmp(ext, ".ppm") == 0 || strcmp(ext, ".PPM") == 0) {
+        return image_load_ppm(path, img);
+    } else if (strcmp(ext, ".png") == 0 || strcmp(ext, ".PNG") == 0) {
+        return image_load_png(path, img);
+    } else {
+        fprintf(stderr, "[image_io] Unsupported file extension '%s'\n", ext);
+        return -1;
+    }
+}
+
+int image_save(const char* path, const Image* img)
+{
+    if (create_output_directories(path) != 0) {
+        fprintf(stderr, "[image_io] Cannot create directory for '%s'\n", path);
+        return -1;
+    }
+
+    const char* ext = strrchr(path, '.');
+    if (!ext) {
+        fprintf(stderr, "[image_io] Unknown file format: %s\n", path);
+        return -1;
+    }
+
+    if (strcmp(ext, ".ppm") == 0 || strcmp(ext, ".PPM") == 0) {
+        return image_save_ppm(path, img);
+    } else if (strcmp(ext, ".png") == 0 || strcmp(ext, ".PNG") == 0) {
+        return image_save_png(path, img);
+    } else {
+        fprintf(stderr, "[image_io] Unsupported file extension '%s'\n", ext);
+        return -1;
+    }
+}
+
 /* =====================================================================
  * image_alloc
  * ===================================================================== */
@@ -162,7 +241,7 @@ int image_generate_synthetic(const char* path, int width, int height,
     unsigned int s = seed;
     size_t n = (size_t)width * height * 3;
     for (size_t i = 0; i < n; i++) {
-        s = s * 1664525u + 1013904223u;   /* Numerical Recipes LCG */
+        s = s * 1664525u + 1013904223u;
         img.pixels[i] = (uint8_t)(s >> 24);
     }
 

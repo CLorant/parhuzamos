@@ -1,4 +1,4 @@
-#include "stego_utils.h"
+#include "common/stego_utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>

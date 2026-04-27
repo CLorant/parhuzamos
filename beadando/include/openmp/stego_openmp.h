@@ -1,7 +1,7 @@
 #ifndef STEGO_OPENMP_H
 #define STEGO_OPENMP_H
 
-#include "stego_types.h"
+#include "common/stego_types.h"
 
 /*
  * Embed msg into img using LSB steganography, parallelised with OpenMP.

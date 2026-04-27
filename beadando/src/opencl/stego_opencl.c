@@ -1,5 +1,5 @@
-#include "stego_opencl.h"
-#include "stego_utils.h"
+#include "common/stego_utils.h"
+#include "opencl/stego_opencl.h"
 
 #include <stdio.h>
 #include <stdlib.h>

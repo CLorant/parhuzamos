@@ -1,5 +1,5 @@
-#include "stego_openmp.h"
-#include "stego_utils.h"
+#include "common/stego_utils.h"
+#include "openmp/stego_openmp.h"
 
 #include <omp.h>
 #include <stdio.h>

@@ -1,4 +1,4 @@
-#include "kernel_loader.h"
+#include "opencl/kernel_loader.h"
 
 #include <stddef.h>
 #include <stdio.h>

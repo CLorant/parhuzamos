@@ -1,7 +1,12 @@
 #ifndef IMAGE_IO_H
 #define IMAGE_IO_H
 
-#include "stego_types.h"
+#include "common/stego_types.h"
+
+int image_load_png(const char* path, Image* img);
+
+/* Save img as a PNG file. Returns 0 on success, -1 on error. */
+int image_save_png(const char* path, const Image* img);
 
 /*
  * Load a binary PPM (P6) file into img.
@@ -15,6 +20,17 @@ int image_load_ppm(const char* path, Image* img);
  * Returns 0 on success, -1 on error.
  */
 int image_save_ppm(const char* path, const Image* img);
+
+/* Load an image from any supported format (PPM, PNG).
+   Returns 0 on success, -1 on error. */
+int image_load(const char* path, Image* img);
+
+/* Save img to a file, choosing format from extension.
+ * Supported extensions: .ppm (binary P6), .png (lossless RGB).
+ * Directories in the path are created automatically.
+ * Returns 0 on success, -1 on error.
+ */
+int image_save(const char* path, const Image* img);
 
 /*
  * Allocate a new Image (pixels are uninitialized).

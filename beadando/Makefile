@@ -4,10 +4,7 @@
 # ============================================================
 
 CC       = gcc
-CFLAGS   = -O2 -Wall -Wextra -std=c11 \
-           -Iinclude/common \
-           -Iinclude/openmp \
-           -Iinclude/opencl
+CFLAGS   = -O2 -Wall -Wextra -std=c11 -Iinclude -DCL_TARGET_OPENCL_VERSION=120
 OMPFLAG  = -fopenmp
 OCLFLAG  = -lOpenCL
 MATHFLAG = -lm
@@ -15,7 +12,9 @@ MATHFLAG = -lm
 # ---- Source files -----------------------------------------------
 SRC_COMMON = src/common/image_io.c \
              src/common/stego_utils.c \
-             src/common/benchmark.c
+             src/common/benchmark.c \
+			 src/common/stb_impl.c \
+			 src/common/filesystem_utils.c
 SRC_OMP    = src/openmp/stego_openmp.c
 SRC_OCL    = src/opencl/kernel_loader.c \
              src/opencl/run_cl.c \

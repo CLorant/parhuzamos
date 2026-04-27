@@ -1,10 +1,10 @@
-#include "benchmark.h"
-#include "image_io.h"
-#include "stego_types.h"
-#include "stego_utils.h"
-#include "stego_openmp.h"
-#include "stego_opencl.h"
-#include "run_cl.h"
+#include "common/benchmark.h"
+#include "common/image_io.h"
+#include "common/stego_types.h"
+#include "common/stego_utils.h"
+#include "opencl/run_cl.h"
+#include "opencl/stego_opencl.h"
+#include "openmp/stego_openmp.h"
 
 #include <stdio.h>
 #include <stdlib.h>
